@@ -106,6 +106,11 @@ do
   -- NOTE: You can change these options as you wish!
   --  For more options, you can see `:help option-list`
 
+  -- Enable 24-bit truecolor. Neovim auto-detects this in most terminals, but
+  -- inside tmux the detection can fail, so set it explicitly (paired with the
+  -- `Tc` terminal-override in ~/.tmux.conf).
+  vim.o.termguicolors = true
+
   -- Make line numbers default
   vim.o.number = true
   -- You can also add relative line numbers, to help with jumping.
@@ -239,6 +244,17 @@ do
   -- vim.keymap.set("n", "<C-S-l>", "<C-w>L", { desc = "Move window to the right" })
   -- vim.keymap.set("n", "<C-S-j>", "<C-w>J", { desc = "Move window to the lower" })
   -- vim.keymap.set("n", "<C-S-k>", "<C-w>K", { desc = "Move window to the upper" })
+
+  -- Open file:lineno from system clipboard (e.g. from Claude Code output)
+  vim.keymap.set('n', '<leader>gf', function()
+    local clip = vim.fn.getreg '+'
+    local file, line = clip:match '^(.+):(%d+)%s*$'
+    if file and line then
+      vim.cmd('e +' .. line .. ' ' .. file)
+    else
+      vim.notify('Clipboard does not match file:lineno pattern: ' .. clip, vim.log.levels.WARN)
+    end
+  end, { desc = 'Open [f]ile:lineno from clipboard' })
 
   -- [[ Basic Autocommands ]]
   --  See `:help lua-guide-autocommands`
@@ -431,6 +447,23 @@ do
   -- - sd'   - [S]urround [D]elete [']quotes
   -- - sr)'  - [S]urround [R]eplace [)] [']
   require('mini.surround').setup()
+
+  -- Per-directory session persistence — the nvim half of the tmux-resurrect /
+  -- tmux-continuum setup. `autoread` loads this directory's local Session.vim
+  -- when nvim starts with no file args; `autowrite` keeps it current on exit.
+  -- Sessions are local (a `Session.vim` in the repo root), so each project
+  -- restores its own buffers/splits independently. Create one per repo once
+  -- with <leader>Ss; after that it restores automatically.
+  require('mini.sessions').setup {
+    autoread = true,
+    autowrite = true,
+  }
+  pcall(function()
+    require('which-key').add { { '<leader>S', group = '[S]ession' } }
+  end)
+  vim.keymap.set('n', '<leader>Ss', function() MiniSessions.write 'Session.vim' end, { desc = '[S]ession: [s]ave (local Session.vim)' })
+  vim.keymap.set('n', '<leader>Sl', function() MiniSessions.read() end, { desc = '[S]ession: [l]oad default' })
+  vim.keymap.set('n', '<leader>Sd', function() MiniSessions.select 'delete' end, { desc = '[S]ession: [d]elete (pick)' })
 
   -- Simple and easy statusline.
   --  You could remove this setup call if you don't like it,
@@ -971,12 +1004,12 @@ do
   -- require 'kickstart.plugins.lint'
   -- require 'kickstart.plugins.autopairs'
   -- require 'kickstart.plugins.neo-tree'
-  -- require 'kickstart.plugins.gitsigns' -- adds gitsigns recommended keymaps
+  require 'kickstart.plugins.gitsigns' -- adds gitsigns recommended keymaps
 
   -- NOTE: You can add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
   --
   --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
-  -- require 'custom.plugins'
+  require 'custom.plugins'
 end
 
 -- The line beneath this is called `modeline`. See `:help modeline`
